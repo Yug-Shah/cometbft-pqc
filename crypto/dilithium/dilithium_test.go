@@ -24,3 +24,34 @@ func TestSignAndValidateDilithium(t *testing.T) {
 
 	assert.False(t, pubKey.DilithiumVerify(algorithm, msg, sig))
 }
+
+func TestBatchSafe(t *testing.T) {
+	v := pqc.NewBatchVerifier()
+
+	algorithm := "Dilithium2"
+
+	for i := 0; i <= 38; i++ {
+		pub, priv, err := pqc.GenerateDilithiumKeyPair(algorithm)
+		require.NoError(t, err)
+
+		var msg []byte
+		if i%2 == 0 {
+			msg = []byte("easter")
+		} else {
+			msg = []byte("egg")
+		}
+
+		sig, err := priv.DilithiumSign(algorithm, msg)
+		require.NoError(t, err)
+
+		err = v.Add(pub, msg, sig, algorithm)
+		require.NoError(t, err)
+	}
+
+	// Verify all entries in the batch
+	for _, entry := range v.Verifications {
+		ok := v.Verify(entry.Algorithm, entry.Message, entry.Signature, entry.PubKey.Key)
+
+		require.True(t, ok, "Batch verification failed for one or more signatures")
+	}
+}

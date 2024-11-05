@@ -8,8 +8,6 @@ import (
 	"github.com/open-quantum-safe/liboqs-go/oqs"
 )
 
-//import "C"
-
 type DilithiumPrivateKey struct {
 	Key []byte
 }
@@ -94,4 +92,56 @@ func isSupportedPQC(algorithm string) bool {
 		}
 	}
 	return false
+}
+
+// ----------------------------------------------------------------------------------------------------------
+
+// BatchVerifier allows batch verification of multiple signatures
+type BatchVerifier struct {
+	Verifications []Verification
+}
+
+func NewBatchVerifier() BatchVerifier {
+	return BatchVerifier{
+		Verifications: []Verification{},
+	}
+}
+
+type Verification struct {
+	PubKey    DilithiumPublicKey
+	Message   []byte
+	Signature []byte
+	Algorithm string
+}
+
+// Add a signature verification to the batch
+func (bv *BatchVerifier) Add(pubKey DilithiumPublicKey, message, signature []byte, algorithm string) error {
+	verification := Verification{
+		PubKey:    pubKey,
+		Message:   message,
+		Signature: signature,
+		Algorithm: algorithm,
+	}
+	bv.Verifications = append(bv.Verifications, verification)
+
+	return nil
+}
+
+// Verify all signatures in the batch
+func (bv *BatchVerifier) Verify(algorithm string, message, signature []byte, pubKey []byte) bool {
+	verifier := oqs.Signature{}
+	defer verifier.Clean()
+
+	err := verifier.Init(algorithm, nil)
+	if err != nil {
+		return false
+	}
+
+	valid, err := verifier.Verify(message, signature, pubKey)
+	if err != nil {
+		return false
+	}
+
+	println(valid)
+	return valid
 }
